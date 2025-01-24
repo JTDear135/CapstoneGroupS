@@ -25,9 +25,9 @@ This project aims to design a system that:
 
 ## :telephone_receiver: Contact
 
-- [Brian Schettler](mailto:tanminivan@gmail.com)
-- [Mounir Zahidi](mailto:Mounir.Zahidi-1@ou.edu)
-- [Tonye Harcourt](mailto:tharcourt05@ou.edu)
-- [Jacob Dearborn](mailto:jtdear4@ou.edu)
-- [Donahue Avila](mailto:Donahue.Avila-1@ou.edu)
-- [Daisy Borja](mailto:Daisy.Borja-1@ou.edu)
+- [Brian Schettler](mailto:tanminivan@gmail.com) - Mentor
+- [Mounir Zahidi](mailto:Mounir.Zahidi-1@ou.edu) - Project Manager
+- [Tonye Harcourt](mailto:tharcourt05@ou.edu) - Scrum Master
+- [Jacob Dearborn](mailto:jtdear4@ou.edu) - Scrum Master
+- [Donahue Avila](mailto:Donahue.Avila-1@ou.edu) - Scrum Master
+- [Daisy Borja](mailto:Daisy.Borja-1@ou.edu) - Scrum Master
