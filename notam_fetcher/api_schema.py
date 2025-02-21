@@ -13,18 +13,21 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, List, Literal, NamedTuple, Optional, Set
 
-from pydantic import BaseModel, field_validator, alias_generators
+from pydantic import BaseModel, ConfigDict, field_validator, alias_generators
 
 
 class AdditionalGeometryData(BaseModel):
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
     pass
-    class Config:
-        extra = 'forbid'
+       
 
 
 class HeightInformation(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
 
     upperLevel: int
     uomUpperLevel: str
@@ -33,8 +36,9 @@ class HeightInformation(BaseModel):
 
 
 class NotamEvent(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
 
     scenario: int
 
@@ -181,8 +185,9 @@ class ItemType(Enum):
 
 
 class GeometryElement(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
 
     type: Literal['Polygon'] | Literal['Point']
     subType: Optional[str] = None
@@ -193,13 +198,18 @@ class GeometryElement(BaseModel):
 
 
 class LocalTranslation(BaseModel):
-    alias_generator=alias_generators.to_camel
-
+    model_config = ConfigDict(
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True
+    )
     type: Literal["LOCAL_FORMAT"]
     simple_text: str
 
 class ICAOTranslation(BaseModel):
-    alias_generator=alias_generators.to_camel
+    model_config = ConfigDict(
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True
+    )
 
     type: Literal["ICAO"]
     formatted_text: str
@@ -207,16 +217,19 @@ class ICAOTranslation(BaseModel):
 
 
 class ItemGeometry(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
     type: Literal["GeometryCollection"]
     geometries: Optional[List[GeometryElement]] = None
 
 
 class Notam(BaseModel):
-    class Config:
-        extra = 'forbid'
-        alias_generator=alias_generators.to_camel
+    model_config = ConfigDict(
+        extra = 'forbid',
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True,
+    )
     
     @field_validator('traffic', 'purpose', 'scope', mode='before')
     @classmethod
@@ -224,8 +237,10 @@ class Notam(BaseModel):
         """
         Converts str to to a set of characters.
 
-        Required because the type of traffic, purpose, and scope are sets of characters.
-        Pydantic will never coerce str to Set so this function transforms the data before Pydantic validates it.
+        Ex: AWE => {'A', 'W', 'E'}
+
+        Required because traffic, purpose, and scope fields are sets of characters represented as strings.
+        Pydantic will never coerce str to Set so this function transforms the data to a set before Pydantic validates it.
         """
         if isinstance(value, str):
             return set(value)
@@ -259,9 +274,11 @@ class Notam(BaseModel):
 
 
 class CoreNOTAMData(BaseModel):
-    class Config:
-        extra = 'forbid'
-        alias_generator=alias_generators.to_camel
+    model_config = ConfigDict(
+        extra = 'forbid',
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True
+    )
 
     notam_event: NotamEvent
     notam: Notam
@@ -269,15 +286,17 @@ class CoreNOTAMData(BaseModel):
 
 
 class Properties(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
 
     coreNOTAMData: CoreNOTAMData
 
 
 class APIItem(BaseModel):
-    class Config:
-        extra = 'forbid'
+    model_config = ConfigDict(
+         extra = 'forbid'
+    )
 
     type: ItemType
     properties: Properties
@@ -285,9 +304,12 @@ class APIItem(BaseModel):
 
 
 class APIResponseSuccess(BaseModel):
-    class Config:
-        extra = 'forbid'
-        alias_generator=alias_generators.to_camel
+    model_config = ConfigDict(
+        extra = 'forbid',
+        alias_generator=alias_generators.to_camel,
+        populate_by_name=True
+    )
+
     page_size: int
     page_num: int
     total_count: int

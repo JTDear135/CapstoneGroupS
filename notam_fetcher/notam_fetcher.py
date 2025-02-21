@@ -12,7 +12,7 @@ from .exceptions import (
 )
 
 
-from .api_schema import Notam, APIResponseSuccess, APIResponseError, APIResponseMessage 
+from .api_schema import CoreNOTAMData, APIResponseSuccess, APIResponseError, APIResponseMessage 
 
 
 class NotamRequest:
@@ -44,16 +44,17 @@ class NotamFetcher:
     
     def fetch_notams_by_airport_code(self, airport_code: str):
         """
-        Fetches ALL notams for a particular latitude and longitude.
+        Fetches ALL notams for a particular airport code.
 
         Args:
-            airport_code (str): A valid airport code.
+            airport_code (str): A valid ICAO airport code
 
-        Raises:
-            NotamFetcherRequestError: If a request error occurs while fetching from the API.
-            NotamFetcherUnexpectedError: If an unexpected error occurs.
         Returns:
-            Notams (List[Notam]): A list of NOTAMs
+            List[CoreNOTAMData]: A complete list of NOTAMs for the airport code.
+        
+        Raises:
+            NotamFetcherUnauthenticatedError: If NotamFetcher has invalid client id or secret.
+            NotamFetcherRequestError: If a requests error occurs while fetching from the API.
         """
         request = NotamAirportCodeRequest(airport_code)
         request.page_size = self._page_size
@@ -65,15 +66,17 @@ class NotamFetcher:
         Fetches ALL notams for a particular latitude and longitude.
 
         Args:
-            lat (float): The latitude to fetch NOTAMs from
-            long (float): The longitude to fetch NOTAMs from
+            lat (float): The latitude to fetch NOTAMs from.
+            long (float): The longitude to fetch NOTAMs from.
             radius (float): The location radius criteria in nautical miles. (max:100)
 
-        Raises:
-            NotamFetcherRequestError: If a request error occurs while fetching from the API.
-            NotamFetcherUnexpectedError: If an unexpected error occurs.
         Returns:
-            Notams (List[Notam]): A list of NOTAMs
+            List[CoreNOTAMData]: A complete list of NOTAMs for the location.
+
+        Raises:
+            NotamFetcherUnauthenticatedError: If NotamFetcher has invalid client id or secret.
+            NotamFetcherRequestError: If a requests error occurs while fetching from the API.
+            ValueError: If the radius is less than or equal to 0 or greater than 100.
         """
         if radius > 100:
             raise ValueError(f"Radius must be less than 100")
@@ -85,18 +88,31 @@ class NotamFetcher:
 
         return self._fetch_all_notams(request)
 
-    def _fetch_all_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> list[Notam]:
+    def _fetch_all_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> list[CoreNOTAMData]:
         """
-        Fetches NOTAMs from all pages of the API
+        Fetches NOTAMs across all pages from the the API.
+        
+        Args:
+            request (NotamAirportCodeRequest | NotamLatLongRequest): The airport or Lat/Long to pull all NOTAMs from. Page is ignored.
+
+        Returns:
+            list[CoreNOTAMData] if all requests returned a Success response.
+        Raises:
+            NotamFetcherUnauthenticatedError: If NotamFetcher has invalid client id or secret.
+            NotamFetcherRequestError: If a requests error occurs while fetching from the API.
         """
         
-        notamItems: list[Notam] = []
+        notamItems: list[CoreNOTAMData] = []
 
         first_page = self._fetch_notams(request)
+        if not isinstance(first_page, APIResponseSuccess):
+            # Did not get a successful response while fetching one of the NOTAMs. Raise
+            raise NotamFetcherUnexpectedError(first_page)
+
         first_page.total_pages
         notamItems.extend(
             [
-                item.properties.coreNOTAMData.notam
+                item.properties.coreNOTAMData
                 for item in first_page.items
             ]
         )
@@ -104,41 +120,41 @@ class NotamFetcher:
         for i in range(2, first_page.total_pages + 1):
             request.page_num = i
             nextPage = self._fetch_notams(request)
+            if not isinstance(nextPage, APIResponseSuccess):
+                raise NotamFetcherUnexpectedError(nextPage)
+            
             notamItems.extend(
                 [
-                    item.properties.coreNOTAMData.notam
+                    item.properties.coreNOTAMData
                     for item in nextPage.items
                 ]
             )
         
         return notamItems
-
-
-
-
- 
         
-
-
-    def _fetch_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> APIResponseSuccess:
+    def _fetch_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> APIResponseSuccess | APIResponseError | APIResponseMessage:
         """
         Fetches and validates a response from the API.
 
         Args:
-
+            reqeust: NotamAirportCodeRequest | NotamLatLongRequest
 
         Returns:
-            NotamAPIResponse: A Notam API Response
+            APIResponseSuccess: if the request returned a Success response
+            APIResponseMessage: if the request returned a Message response
+            APIResponseError: if the request returned an Error response
 
         Raises:
             NotamFetcherRequestError: If a request error occurs while fetching from the API.
             NotamFetcherUnexpectedError: If an unexpected error occurs.
-            ValueError: If the request is invalid.
+            NotamFetcherUnauthenticatedError: If NotamFetcher has invalid client id or secret.
+            NotamFetcherValidationError: If the response was not an Success, Error, or Message response
+            ValueError: If the request request page_num is less than 1.
         """
         if request.page_num < 1:
             raise ValueError("page_num must be greater than 0")
 
-        dict = self._fetch_notams_raw(request)
+        data = self._fetch_notams_raw(request)
         
         # the response dict can be an unvalidated APIResponseSuccess, APIResponseError, or APIResponseMessage
         # We try to validate the response as each type.
@@ -146,13 +162,13 @@ class NotamFetcher:
 
         # APIResponseSuccess case
         try:
-            return APIResponseSuccess.model_validate(dict)
+            return APIResponseSuccess.model_validate(data)
         except ValidationError:
             pass
         
         # APIResponseError case
         try:
-            error_response = APIResponseError.model_validate(dict)
+            error_response = APIResponseError.model_validate(data)
             if error_response.error == "Invalid client id or secret":
                 raise NotamFetcherUnauthenticatedError("Invalid client id or secret")
             
@@ -163,15 +179,11 @@ class NotamFetcher:
 
         # APIResponseMessage case
         try:
-            message_response = APIResponseMessage.model_validate(dict)
+            message_response = APIResponseMessage.model_validate(data)
             raise NotamFetcherUnexpectedError(f"Unexpected message: {message_response.message}")
         except ValidationError:
-            raise (
-                NotamFetcherValidationError(
-                    f"Could not validate response from API.",
-                    dict
-                )
-            )
+            raise NotamFetcherValidationError(f"Could not validate response from API.", data)
+            
 
     def _fetch_notams_raw(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> dict[str, Any]:
         
@@ -193,7 +205,7 @@ class NotamFetcher:
 
         if isinstance(request, NotamAirportCodeRequest):
             query_string = {
-                "domesticLocation": str(request.airport_code),
+                "icaoLocation": str(request.airport_code),
                 "page_num": str(request.page_num),
                 "page_size": str(request.page_size),
             }
