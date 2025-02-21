@@ -57,6 +57,3 @@ class FlightCodeValidator:
         # Airport does not exist
         else:
             return False
-        
-code= "lax"
-print(FlightCodeValidator.is_valid(code.upper()))
