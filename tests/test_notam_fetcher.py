@@ -34,63 +34,6 @@ def mock_api_received_invalid_json(monkeypatch: MonkeyPatch):
     monkeypatch.setattr(requests, "get", returnInvalid)
 
 
-@pytest.fixture
-def mock_one_unexpected_response(monkeypatch: MonkeyPatch):
-    def returnUnexpected(*args: Any, **kwargs: Any) -> MockResponse:
-        return MockResponse(
-            {
-                "pageSize": 50,
-                "pageNum": 1,
-                "totalCount": 2,
-                "totalPages": 1,
-                "items": [
-                    {
-                        "type": "Feature",
-                        "properties": {
-                            "coreNOTAMData": {
-                                "notamEvent": {"scenario": "6000"},
-                                "notam": {
-                                    "id": "NOTAM_1_73849637",
-                                    "series": "A",
-                                    "number": "A2157/24",
-                                    "type": "N",
-                                    "issued": "2024-10-02T19:54:00.000Z",
-                                    "affectedFIR": "KZJX",
-                                    "selectionCode": "QCBLS",
-                                    "minimumFL": "000",
-                                    "maximumFL": "040",
-                                    "location": "ZJX",
-                                    "effectiveStart": "2024-10-02T19:50:00.000Z",
-                                    "effectiveEnd": "2024-10-14T22:00:00.000Z",
-                                    "text": "ZJX AIRSPACE ADS-B, AUTO DEPENDENT SURVEILLANCE\nREBROADCAST (ADS-R), TFC INFO SER BCST (TIS-B), FLT INFO SER\nBCST (FIS-B) SER MAY NOT BE AVBL WI AN AREA DEFINED AS 49NM\nRADIUS OF 322403N0781209W.",
-                                    "classification": "INTL",
-                                    "accountId": "KZJX",
-                                    "lastUpdated": "2024-10-02T19:54:00.000Z",
-                                    "icaoLocation": "KZJX",
-                                    "lowerLimit": "SFC",
-                                    "upperLimit": "3999FT.",
-                                },
-                                "notamTranslation": [
-                                    {
-                                        "type": "ICAO",
-                                        "formattedText": "A2157/24 NOTAMN\nQ) KZJX/QCBLS////000/040/\nA) KZJX\nB) 2410021950\nC) 2410142200 EST\nE) ZJX AIRSPACE ADS-B, AUTO DEPENDENT SURVEILLANCE\nREBROADCAST (ADS-R), TFC INFO SER BCST (TIS-B), FLT INFO SER\nBCST (FIS-B) SER MAY NOT BE AVBL WI AN AREA DEFINED AS 49NM\nRADIUS OF 322403N0781209W.\nF) SFC   G) 3999FT.",
-                                    }
-                                ],
-                            }
-                        },
-                        "geometry": {"type": "GeometryCollection"},
-                    },
-                    {
-                        "type": "Point",
-                        "geometry": {"type": "Point", "coordinates": [0]},
-                        "properties": {"name": "Dinagat Islands"},
-                    },
-                ],
-            }
-        )
-
-    monkeypatch.setattr(requests, "get", returnUnexpected)
-
 
 @pytest.fixture
 def mock_unexpected_response(monkeypatch: MonkeyPatch):
@@ -143,19 +86,12 @@ def test_fetch_notams_by_latlong_invalid_json(mock_api_received_invalid_json: No
     )
 
 
-def test_fetch_notams_by_latlong_one_unexpected_response(mock_one_unexpected_response: None):
-    """Test that fetch_notams_by_latlong filters a non-notam object in the NOTAMs API response"""
-    notam_fetcher = NotamFetcher("CLIENT_ID", "CLIENT_SECRET")
-    notams = notam_fetcher.fetch_notams_by_latlong(32, 32, 10)
-    assert len(notams) == 1
-    assert notams[0].id == "NOTAM_1_73849637"
-
 
 def test_fetch_notams_by_latlong_unexpected_response(mock_unexpected_response: None):
     """Test that fetch_notams_by_latlong filters a non-notam object in the NOTAMs API response"""
     notam_fetcher = NotamFetcher("CLIENT_ID", "CLIENT_SECRET")
-    notams = notam_fetcher.fetch_notams_by_latlong(32, 32, 10)
-    assert len(notams) == 0
+    with pytest.raises(NotamFetcherValidationError):
+        notam_fetcher.fetch_notams_by_latlong(32, 32, 10)
 
 
 def test_fetch_notams_by_latlong_no_notams(mock_empty_response: None):

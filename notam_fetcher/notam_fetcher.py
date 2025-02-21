@@ -12,7 +12,7 @@ from .exceptions import (
 )
 
 
-from .api_schema import Notam, NotamAPIResponse, NotamApiItem 
+from .api_schema import Notam, APIResponseSuccess, APIResponseError, APIResponseMessage 
 
 
 class NotamRequest:
@@ -93,12 +93,11 @@ class NotamFetcher:
         notamItems: list[Notam] = []
 
         first_page = self._fetch_notams(request)
-
+        first_page.total_pages
         notamItems.extend(
             [
                 item.properties.coreNOTAMData.notam
                 for item in first_page.items
-                if isinstance(item, NotamApiItem)
             ]
         )
 
@@ -109,7 +108,6 @@ class NotamFetcher:
                 [
                     item.properties.coreNOTAMData.notam
                     for item in nextPage.items
-                    if isinstance(item, NotamApiItem)
                 ]
             )
         
@@ -122,7 +120,7 @@ class NotamFetcher:
         
 
 
-    def _fetch_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> NotamAPIResponse:
+    def _fetch_notams(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> APIResponseSuccess:
         """
         Fetches and validates a response from the API.
 
@@ -140,17 +138,41 @@ class NotamFetcher:
         if request.page_num < 1:
             raise ValueError("page_num must be greater than 0")
 
-        json = self._fetch_notams_raw(request)
+        dict = self._fetch_notams_raw(request)
+        
+        # the response dict can be an unvalidated APIResponseSuccess, APIResponseError, or APIResponseMessage
+        # We try to validate the response as each type.
+        # If it cannot be validated, a NotamFetcherValidationError is thrown. 
+
+        # APIResponseSuccess case
         try:
-            valid_response = NotamAPIResponse.model_validate(json)
-            return valid_response
+            return APIResponseSuccess.model_validate(dict)
+        except ValidationError:
+            pass
+        
+        # APIResponseError case
+        try:
+            error_response = APIResponseError.model_validate(dict)
+            if error_response.error == "Invalid client id or secret":
+                raise NotamFetcherUnauthenticatedError("Invalid client id or secret")
+            
+            raise NotamFetcherUnexpectedError(f"Unexpected Error: {error_response.error}")
+        
+        except ValidationError:
+            pass
+
+        # APIResponseMessage case
+        try:
+            message_response = APIResponseMessage.model_validate(dict)
+            raise NotamFetcherUnexpectedError(f"Unexpected message: {message_response.message}")
         except ValidationError:
             raise (
                 NotamFetcherValidationError(
-                    f"Could not validate response from API.", json
+                    f"Could not validate response from API.",
+                    dict
                 )
             )
-        
+
     def _fetch_notams_raw(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> dict[str, Any]:
         
         query_string ={}
@@ -190,11 +212,7 @@ class NotamFetcher:
             raise NotamFetcherRequestError from e
 
         try:
-            data = response.json()
-            if data.get("error", "") == "Invalid client id or secret":
-                raise (NotamFetcherUnauthenticatedError("Invalid client id or secret"))
-            
-            return data
+            return response.json()
         except requests.exceptions.JSONDecodeError:
             raise (
                 NotamFetcherUnexpectedError(
