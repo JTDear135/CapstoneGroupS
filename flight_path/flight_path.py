@@ -1,3 +1,5 @@
+# type: ignore
+from typing import Tuple, List
 import pandas as pd
 from geopy import Point
 from collections import defaultdict
@@ -28,40 +30,40 @@ class FlightPath:
         pass
     
 
-    """
-    Translates Airport Codes to Coordinates.
+    def __get_coordinates(self, airport_code):
+        """
+        Translates Airport Codes to Coordinates.
 
-    Args:
-        airport_code (str): Aiport Code (for now it is accepting both ICAC and IATA format)
+        Args:
+            airport_code (str): Aiport Code (for now it is accepting both ICAC and IATA format)
     
-    Returns:
-        (latitude, longitude) tuple(str): Tuple of latitude and longitude of the airport position
-    """
-    def __get_coordinates(self, airport_code: str):
+        Returns:
+            (latitude, longitude) tuple(str): Tuple of latitude and longitude of the airport position
+        """
         row = self.airport_data.loc[(self.airport_data["ICAO"] == airport_code) | (self.airport_data["IATA"] == airport_code)] # This can be chnaged to only ICAC in the future when merging.
 
         if row.empty:
-            print(f"Airport code {airport_code} not found!")
-            return None
+            raise ValueError(f"Airport code {airport_code} not found in the dataset.")
         
         latitude = row.iloc[0]["Latitude"]
         longitude = row.iloc[0]["Longitude"]
 
         return latitude, longitude
     
-    """
-    Generates `n` waypoints along the flight path.
+    
+    def get_waypoints(self, n: int) -> List[Tuple[float, float]]:
+        """
+        Generates `n` waypoints along the flight path.
 
-    Uses the great-circle distance to compute equally spaced waypoints from 
-    the departure airport to the destination.
+        Uses the great-circle distance to compute equally spaced waypoints from 
+        the departure airport to the destination.
 
-    Args:
-        n (int): Number of waypoints to generate.
+        Args:
+            n (int): Number of waypoints to generate.
 
-    Returns:
-        list: A list of tuples containing the latitude and longitude of each waypoint, including the departure and destination airport
-    """
-    def get_waypoints(self, n: int):
+        Returns:
+            list: A list of tuples containing the latitude and longitude of each waypoint, including the departure and destination airport
+        """
         # turn the cords into points using geopy library
         depart = Point(self.departure[0], self.departure[1])
         dest = Point(self.destination[0], self.destination[1])
