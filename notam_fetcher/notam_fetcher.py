@@ -47,7 +47,7 @@ class NotamFetcher:
         Fetches ALL notams for a particular airport code.
 
         Args:
-            airport_code (str): A valid ICAO airport code
+            airport_code (str): A valid ICAO airport code.
 
         Returns:
             List[CoreNOTAMData]: A complete list of NOTAMs for the airport code.
@@ -140,15 +140,15 @@ class NotamFetcher:
             reqeust: NotamAirportCodeRequest | NotamLatLongRequest
 
         Returns:
-            APIResponseSuccess: if the request returned a Success response
-            APIResponseMessage: if the request returned a Message response
-            APIResponseError: if the request returned an Error response
+            APIResponseSuccess: if the request returned a Success response.
+            APIResponseMessage: if the request returned a Message response.
+            APIResponseError: if the request returned an Error response.
 
         Raises:
             NotamFetcherRequestError: If a request error occurs while fetching from the API.
             NotamFetcherUnexpectedError: If an unexpected error occurs.
             NotamFetcherUnauthenticatedError: If NotamFetcher has invalid client id or secret.
-            NotamFetcherValidationError: If the response was not an Success, Error, or Message response
+            NotamFetcherValidationError: If the response was not an Success, Error, or Message response.
             ValueError: If the request request page_num is less than 1.
         """
         if request.page_num < 1:
@@ -186,7 +186,19 @@ class NotamFetcher:
             
 
     def _fetch_notams_raw(self, request: NotamAirportCodeRequest | NotamLatLongRequest) -> dict[str, Any]:
+        """
+        Returns the JSON response as dict from the NOTAMs API.
         
+        Args:
+            request (NotamAirportCodeRequest | NotamLatLongRequest): The airport or Lat/Long to pull all NOTAMs from.
+
+        Returns:
+            dict[str, Any]: If the requests was successful.
+        
+        Raises:
+            NotamFetcherRequestError if a requests error occured.
+            NotamFetcherUnexpectedError if the response was invalid JSON.
+        """
         query_string ={}
 
         if isinstance(request, NotamLatLongRequest):

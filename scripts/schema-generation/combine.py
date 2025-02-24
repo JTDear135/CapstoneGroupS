@@ -1,3 +1,6 @@
+"""
+Combines the responses saved in ./collected/ into one JSON file to use with Quicktype
+"""
 import os
 import json
 from typing import Any, List
