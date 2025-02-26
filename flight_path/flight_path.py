@@ -13,7 +13,7 @@ Flight Path Component.
 This script calculates waypoints between two airports based on their ICAO/IATA codes.
 
 Features:
-    - Reads airport data from a CSV file. (This will need to be chnaged when merging with the driver!!!!)
+    - Reads airport data from a CSV file. (This will need to be changed when merging with the driver!!!!)
     - Retrieves coordinates for given airport codes. (Private)
     - Computes equally spaced waypoints along a great-circle path. (We can choose how may points along the path we want)
     - Uses GeographicLib for precise bearing calculations. (precise just means not in a straight line. Instead, this library takes into consideration the curvature of the earth!)
@@ -40,7 +40,7 @@ class FlightPath:
         Returns:
             (latitude, longitude) tuple(str): Tuple of latitude and longitude of the airport position
         """
-        row = self.airport_data.loc[(self.airport_data["ICAO"] == airport_code) | (self.airport_data["IATA"] == airport_code)] # This can be chnaged to only ICAC in the future when merging.
+        row = self.airport_data.loc[(self.airport_data["ICAO"] == airport_code) | (self.airport_data["IATA"] == airport_code)] # This can be changed to only ICAC in the future when merging.
 
         if row.empty:
             raise ValueError(f"Airport code {airport_code} not found in the dataset.")
@@ -64,19 +64,23 @@ class FlightPath:
         Returns:
             list: A list of tuples containing the latitude and longitude of each waypoint, including the departure and destination airport
         """
-        # turn the cords into points using geopy library
+        # turn the coords into points using geopy library
         depart = Point(self.departure[0], self.departure[1])
         dest = Point(self.destination[0], self.destination[1])
+        result = [(depart.latitude, depart.longitude)]
+        
+        # when dest == depart, we return the coordinates of the departure airport
+        if (depart == dest):
+            return result
         
         # find n points on the way
-        result = [(depart.latitude, depart.longitude)]
         total_dist = geodesic(depart, dest).km # this is real world distance on earth, great-circle distance.
         step_size = total_dist/ (n+1)
         # get the direction of the two points, bearing (angle of the line)
         bearing = Geodesic.WGS84.Inverse(self.departure[0], self.departure[1], self.destination[0], self.destination[1])
 
         for i in range(1, n+1):
-            next_point = geodesic(kilometers = step_size * i).destination(depart, bearing["azi1"])
+            next_point = geodesic(kilometers = step_size * i).destination(depart, bearing["azi1"]) # --> az1 here is the initial bearing (the angle of the line from the departure to the destination airport)
             result.append((next_point.latitude, next_point.longitude))
         
         result.append((dest.latitude, dest.longitude))
@@ -90,14 +94,14 @@ def main():
 
     flight_path = FlightPath(departure, destination)
 
-    num_points = input("How many way points\n")
-    way_points = flight_path.get_waypoints(int(num_points)) # you can choose how many points you want between the depart and destination here.
+    num_points = input("How many waypoints\n")
+    waypoints = flight_path.get_waypoints(int(num_points)) # you can choose how many points you want between the depart and destination here.
 
     # to visualize
-    m = folium.Map(location=way_points[0], zoom_start=5)
+    m = folium.Map(location=waypoints[0], zoom_start=5)
 
     # Add pins for each coordinate on the map
-    for coord in way_points:
+    for coord in waypoints:
         folium.Marker(coord).add_to(m)
 
     m.save("map.html")
