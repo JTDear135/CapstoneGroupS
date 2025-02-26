@@ -1,14 +1,10 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, alias_generators
+from pydantic import BaseModel
 from rich.console import Console
 
 # NotAM class copied from notam_fetcher/api_schema.py
 class Notam(BaseModel):
-    model_config = ConfigDict(
-        alias_generator=alias_generators.to_camel
-    )
-    
     id: str
     number: str
     type: str
@@ -80,7 +76,7 @@ notams = [
     number="B5678",
     type="Restriction",
     issued=datetime(2025, 3, 1, 15, 30, 0),
-    selection_code="X123",
+    selection_code="REST",
     location="LAX",
     effective_start=datetime(2025, 3, 2, 6, 0, 0),
     effective_end=datetime(2025, 3, 5, 20, 0, 0),
@@ -89,7 +85,7 @@ notams = [
     account_id="ABC456",
     last_updated=datetime(2025, 3, 1, 16, 0, 0),
     icao_location="KLAX"
-)
+    )
 ]
 
 print_notams(notams)
