@@ -23,5 +23,5 @@ def mock_airports():
     ("FAKE", False)                  # Non-existent
 ])
 
-def test_airports(mock_airports, code, expected):
+def test_airports(mock_airports: None, code: str, expected: bool):
     assert AirportCodeValidator.is_valid(code) == expected
