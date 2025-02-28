@@ -30,5 +30,3 @@ class AirportCodeValidator:
         if airport_details.empty or "United States" not in airport_details["Country"].values:
             return False
         return airport_details["Tz Database Timezone"].values[0] not in ["Pacific/Honolulu", "America/Anchorage"]
-    
-print(AirportCodeValidator.is_valid("BTI"))
